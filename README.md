@@ -106,6 +106,7 @@ Edit `setup_config.json` to customize your setup:
 - **Communication**: Slack, Discord
 - **Design**: Figma
 - **Utilities**: ngrok, ImageOptim
+- **VPN/Security**: ProtonVPN, Cloudflare WARP
 
 ### CLI Tools (Configurable)
 - git, nvm, yarn, pnpm

@@ -51,7 +51,9 @@
         "discord",
         "figma",
         "ngrok",
-        "imageoptim"
+        "imageoptim",
+        "protonvpn",
+        "cloudflare-warp"
       ]
     },
     "cli_tools": {
