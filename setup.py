@@ -484,7 +484,14 @@ def install_rust(config: Config):
         # Add cargo to PATH for this session
         cargo_bin = str(Path.home() / '.cargo' / 'bin')
         os.environ['PATH'] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
-    
+
+    # Install rustup components
+    rustup_path = Path.home() / '.cargo' / 'bin' / 'rustup'
+    if rustup_path.exists():
+        print("  -> Installing rustup components (clippy, rustfmt)")
+        run_command([str(rustup_path), 'component', 'add', 'clippy', 'rustfmt'],
+                   check=False, show_output=False)
+
     # Install cargo tools
     cargo_tools = rust_config.get('cargo_tools', [])
     if cargo_tools and cargo_path.exists():
@@ -496,7 +503,13 @@ def install_rust(config: Config):
             if result.returncode == 0 and tool in result.stdout:
                 print(f"     {tool} already installed")
             else:
-                run_command([str(cargo_path), 'install', tool], show_output=False, timeout=300)
+                # Use --force to ensure installation even if partially installed
+                install_result = run_command([str(cargo_path), 'install', '--force', tool],
+                                           check=False, show_output=False, timeout=300)
+                if install_result.returncode != 0:
+                    print(f"     Warning: Failed to install {tool}, trying without --force")
+                    run_command([str(cargo_path), 'install', tool],
+                              check=False, show_output=False, timeout=300)
 
 def install_node(config: Config):
     """Install Node.js via NVM"""
@@ -537,6 +550,10 @@ def install_node(config: Config):
     """
     run_command(nvm_cmd, shell=True, show_output=True)
     
+    # Link node if installed via Homebrew (for compatibility)
+    print("  -> Ensuring node is properly linked")
+    run_command(["brew", "link", "node"], check=False, show_output=False)
+
     # Install npm packages
     npm_packages = node_config.get('npm_packages', [])
     if npm_packages:

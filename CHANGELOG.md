@@ -5,6 +5,19 @@ All notable changes to the macOS Setup project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-09-16
+
+### Added
+- Claude and ChatGPT to GUI apps list
+- Cloudflare Wrangler CLI tool
+- Rustup components (clippy, rustfmt) installation after Rust setup
+- Node.js linking via `brew link node` for compatibility
+- Force flag for cargo tools installation to handle partial installs
+
+### Improved
+- Cargo tools installation with fallback on failure
+- Better error handling for cargo install commands
+
 ## [1.2.0] - 2025-09-16
 
 ### Added

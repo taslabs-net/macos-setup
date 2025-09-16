@@ -46,6 +46,8 @@
         "visual-studio-code",
         "coteditor",
         "claude-code",
+        "claude",
+        "chatgpt",
         "orbstack",
         "slack",
         "discord",
@@ -73,7 +75,8 @@
         "eza",
         "htop",
         "jq",
-        "tldr"
+        "tldr",
+        "cloudflare-wrangler"
       ]
     }
   },
