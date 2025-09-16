@@ -106,12 +106,12 @@ Edit `setup_config.json` to customize your setup:
 - **Communication**: Slack, Discord
 - **Design**: Figma
 - **Utilities**: ngrok, ImageOptim
-- **VPN/Security**: ProtonVPN, Cloudflare WARP
+- **VPN/Security**: ProtonVPN
 
 ### CLI Tools (Configurable)
 - git, nvm, yarn, pnpm
 - wget, cmake, ffmpeg, make, tree
-- ripgrep, fzf, bat, exa, htop
+- ripgrep, fzf, bat, eza, htop
 - jq, tldr, gh (GitHub CLI)
 
 ## Output Modes

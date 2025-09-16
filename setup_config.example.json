@@ -52,8 +52,7 @@
         "figma",
         "ngrok",
         "imageoptim",
-        "protonvpn",
-        "cloudflare-warp"
+        "protonvpn"
       ]
     },
     "cli_tools": {
@@ -71,7 +70,7 @@
         "ripgrep",
         "fzf",
         "bat",
-        "exa",
+        "eza",
         "htop",
         "jq",
         "tldr"

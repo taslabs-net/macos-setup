@@ -5,6 +5,37 @@ All notable changes to the macOS Setup project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-09-16
+
+### Added
+- Full implementation of all features (no placeholder code remaining):
+  - SSH key generation with keychain integration
+  - Rust installation via Homebrew rustup
+  - Node.js installation via NVM with npm packages
+  - Oh My Zsh installation with plugins
+  - Starship prompt installation via Homebrew
+- Auto-linking for yarn and pnpm after installation
+- ProtonVPN to GUI apps list
+
+### Changed
+- Starship now installs via Homebrew instead of curl script
+- Rust now installs via Homebrew's rustup package
+- NVM properly managed through Homebrew
+- Script simplified by removing interactive mode completely
+- Configuration file is now required (no defaults)
+- Replaced deprecated 'exa' with 'eza' CLI tool
+- Node.js LTS installation properly handles version flag
+
+### Fixed
+- run_command() return value handling (tuple vs result object)
+- Node.js 'lts' keyword now properly converted to '--lts' flag
+- yarn and pnpm linking issues with --overwrite flag
+
+### Removed
+- Interactive mode and all related code
+- Cloudflare WARP (requires sudo, not automatable)
+- All placeholder implementations
+
 ## [1.1.0] - 2025-09-15
 
 ### Added

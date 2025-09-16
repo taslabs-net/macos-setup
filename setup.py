@@ -246,7 +246,7 @@ def run_command(cmd, shell=False, check=True, show_output=False, verbose=False, 
     try:
         if show_output or verbose:
             result = subprocess.run(cmd, shell=shell, check=check, timeout=timeout)
-            return result.returncode == 0, ""
+            return result
         else:
             result = subprocess.run(cmd, shell=shell, check=check, capture_output=True, text=True, timeout=timeout)
 
@@ -255,13 +255,19 @@ def run_command(cmd, shell=False, check=True, show_output=False, verbose=False, 
             if result.stderr:
                 detail_logger.debug(f"STDERR:\n{result.stderr}")
 
-            return result.returncode == 0, result.stdout
+            return result
     except subprocess.TimeoutExpired as e:
         detail_logger.error(f"Command timed out after {timeout}s: {cmd_str}")
-        return False, f"Command timed out after {timeout} seconds"
+        # Return a mock result object
+        class MockResult:
+            returncode = 1
+            stdout = f"Command timed out after {timeout} seconds"
+            stderr = ""
+        return MockResult()
     except subprocess.CalledProcessError as e:
         detail_logger.error(f"Command failed: {str(e)}")
-        return False, str(e)
+        # Return the actual result from the exception
+        return e
 
 # Get system information
 def get_system_info():
@@ -356,6 +362,293 @@ def configure_git(config: Config):
             run_command(["git", "config", "--global", f"alias.{alias}", command])
             print(f"  -> Set alias '{alias}' to '{command}'")
 
+def install_homebrew(config: Config):
+    """Install or update Homebrew"""
+    homebrew_config = config.config_data.get('packages', {}).get('homebrew', {})
+    
+    if not homebrew_config.get('install', True):
+        print("Skipping Homebrew installation (disabled in config)")
+        return
+    
+    # Check if Homebrew is already installed
+    brew_path = '/opt/homebrew/bin/brew' if os.uname().machine == 'arm64' else '/usr/local/bin/brew'
+    
+    if os.path.exists(brew_path):
+        print("Homebrew already installed")
+        if homebrew_config.get('update', True):
+            print("Updating Homebrew...")
+            run_command([brew_path, "update"], show_output=True)
+    else:
+        print("Installing Homebrew...")
+        install_cmd = '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+        run_command(install_cmd, shell=True, show_output=True)
+        
+        # Add Homebrew to PATH for this session
+        if os.uname().machine == 'arm64':
+            os.environ['PATH'] = f"/opt/homebrew/bin:{os.environ.get('PATH', '')}"
+        else:
+            os.environ['PATH'] = f"/usr/local/bin:{os.environ.get('PATH', '')}"
+
+def generate_ssh_key(config: Config):
+    """Generate SSH key for GitHub"""
+    ssh_config = config.config_data.get('ssh', {})
+    
+    if not ssh_config.get('generate_key', True):
+        print("Skipping SSH key generation (disabled in config)")
+        return
+    
+    print("Setting up SSH key for GitHub...")
+    
+    key_type = ssh_config.get('key_type', 'ed25519')
+    key_name = ssh_config.get('key_name', 'github')
+    ssh_dir = Path.home() / '.ssh'
+    key_path = ssh_dir / f"id_{key_type}_{key_name}"
+    
+    # Create .ssh directory if it doesn't exist
+    ssh_dir.mkdir(mode=0o700, exist_ok=True)
+    
+    if key_path.exists():
+        print(f"  -> SSH key already exists: {key_path}")
+    else:
+        print(f"  -> Generating {key_type} SSH key: {key_path}")
+        cmd = [
+            'ssh-keygen', '-t', key_type,
+            '-f', str(key_path),
+            '-C', config.user_email or 'user@example.com',
+            '-N', ''  # No passphrase
+        ]
+        run_command(cmd)
+    
+    # Add to keychain if on macOS
+    if ssh_config.get('add_to_keychain', True):
+        print("  -> Adding SSH key to keychain")
+        # Update SSH config
+        ssh_config_file = ssh_dir / 'config'
+        config_content = f"""
+Host github.com
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentityFile {key_path}
+"""
+        
+        if ssh_config_file.exists():
+            existing_content = ssh_config_file.read_text()
+            if 'Host github.com' not in existing_content:
+                ssh_config_file.write_text(existing_content + config_content)
+        else:
+            ssh_config_file.write_text(config_content)
+            ssh_config_file.chmod(0o600)
+        
+        # Add key to ssh-agent and keychain
+        run_command(['ssh-add', '--apple-use-keychain', str(key_path)])
+    
+    # Display public key
+    pub_key_path = f"{key_path}.pub"
+    if os.path.exists(pub_key_path):
+        with open(pub_key_path, 'r') as f:
+            pub_key = f.read().strip()
+        print(f"\n  -> Public key for GitHub:")
+        print(f"     {pub_key}")
+        print(f"\n  -> Add this key to GitHub at: https://github.com/settings/keys")
+
+def install_rust(config: Config):
+    """Install Rust and cargo tools"""
+    rust_config = config.config_data.get('development', {}).get('rust', {})
+    
+    if not rust_config.get('install', True):
+        print("Skipping Rust installation (disabled in config)")
+        return
+    
+    print("Installing Rust...")
+    
+    # First ensure rustup is installed via Homebrew
+    result = run_command(["brew", "list", "rustup"], check=False)
+    if result.returncode != 0:
+        print("  -> Installing rustup via Homebrew")
+        run_command(["brew", "install", "rustup"], show_output=True)
+    
+    # Check if Rust toolchain is installed
+    rustc_path = Path.home() / '.cargo' / 'bin' / 'rustc'
+    cargo_path = Path.home() / '.cargo' / 'bin' / 'cargo'
+    
+    if rustc_path.exists():
+        print("  -> Rust toolchain already installed")
+        # Use full path to avoid PATH issues
+        result = run_command([str(rustc_path), '--version'], check=False)
+        if result.returncode == 0:
+            print(f"     {result.stdout.strip()}")
+    else:
+        print("  -> Installing Rust toolchain via rustup")
+        run_command(["rustup-init", "-y"], show_output=True, timeout=600)
+        
+        # Add cargo to PATH for this session
+        cargo_bin = str(Path.home() / '.cargo' / 'bin')
+        os.environ['PATH'] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
+    
+    # Install cargo tools
+    cargo_tools = rust_config.get('cargo_tools', [])
+    if cargo_tools and cargo_path.exists():
+        for tool in cargo_tools:
+            print(f"  -> Installing cargo tool: {tool}")
+            # Check if tool is already installed
+            check_cmd = [str(cargo_path), 'install', '--list']
+            result = run_command(check_cmd, check=False)
+            if result.returncode == 0 and tool in result.stdout:
+                print(f"     {tool} already installed")
+            else:
+                run_command([str(cargo_path), 'install', tool], show_output=False, timeout=300)
+
+def install_node(config: Config):
+    """Install Node.js via NVM"""
+    node_config = config.config_data.get('development', {}).get('node', {})
+    
+    if not node_config.get('install', True):
+        print("Skipping Node.js installation (disabled in config)")
+        return
+    
+    print("Installing Node.js via NVM...")
+    
+    # Ensure NVM is installed via Homebrew
+    result = run_command(["brew", "list", "nvm"], check=False)
+    if result.returncode != 0:
+        print("  -> Installing NVM via Homebrew")
+        run_command(["brew", "install", "nvm"], show_output=True)
+        
+        # Create .nvm directory
+        nvm_dir = Path.home() / '.nvm'
+        nvm_dir.mkdir(exist_ok=True)
+    
+    # Install Node version
+    node_version = node_config.get('version', 'lts')
+    
+    # Handle 'lts' keyword properly
+    if node_version.lower() == 'lts':
+        node_version = '--lts'
+    
+    print(f"  -> Installing Node.js {node_version}")
+    
+    # Source NVM and install Node
+    nvm_cmd = f"""
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    nvm install {node_version}
+    nvm use {node_version}
+    nvm alias default {node_version}
+    """
+    run_command(nvm_cmd, shell=True, show_output=True)
+    
+    # Install npm packages
+    npm_packages = node_config.get('npm_packages', [])
+    if npm_packages:
+        npm_cmd_base = f"""
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        """
+        for package in npm_packages:
+            print(f"  -> Installing npm package: {package}")
+            npm_cmd = npm_cmd_base + f"npm install -g {package}"
+            run_command(npm_cmd, shell=True, show_output=False)
+
+def install_oh_my_zsh(config: Config):
+    """Install Oh My Zsh and plugins"""
+    omz_config = config.config_data.get('shell', {}).get('oh_my_zsh', {})
+    
+    if not omz_config.get('install', True):
+        print("Skipping Oh My Zsh installation (disabled in config)")
+        return
+    
+    print("Installing Oh My Zsh...")
+    
+    omz_dir = Path.home() / '.oh-my-zsh'
+    
+    if omz_dir.exists():
+        print("  -> Oh My Zsh already installed")
+    else:
+        print("  -> Installing Oh My Zsh")
+        install_cmd = 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
+        run_command(install_cmd, shell=True, show_output=True)
+    
+    # Install plugins
+    plugins = omz_config.get('plugins', [])
+    if plugins:
+        custom_plugins_dir = omz_dir / 'custom' / 'plugins'
+        custom_plugins_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Install custom plugins that aren't bundled
+        plugin_repos = {
+            'zsh-autosuggestions': 'https://github.com/zsh-users/zsh-autosuggestions',
+            'zsh-syntax-highlighting': 'https://github.com/zsh-users/zsh-syntax-highlighting',
+            'zsh-completions': 'https://github.com/zsh-users/zsh-completions'
+        }
+        
+        for plugin in plugins:
+            if plugin in plugin_repos:
+                plugin_dir = custom_plugins_dir / plugin
+                if not plugin_dir.exists():
+                    print(f"  -> Installing plugin: {plugin}")
+                    run_command(['git', 'clone', plugin_repos[plugin], str(plugin_dir)])
+        
+        # Update .zshrc to include plugins
+        zshrc_path = Path.home() / '.zshrc'
+        if zshrc_path.exists():
+            zshrc_content = zshrc_path.read_text()
+            plugins_line = f"plugins=({' '.join(plugins)})"
+            
+            # Replace existing plugins line
+            import re
+            new_content = re.sub(r'^plugins=\([^)]*\)', plugins_line, zshrc_content, flags=re.MULTILINE)
+            if new_content != zshrc_content:
+                zshrc_path.write_text(new_content)
+                print(f"  -> Updated .zshrc with plugins: {', '.join(plugins)}")
+
+def install_starship(config: Config):
+    """Install and configure Starship prompt"""
+    starship_config = config.config_data.get('shell', {}).get('starship', {})
+    
+    if not starship_config.get('install', True):
+        print("Skipping Starship installation (disabled in config)")
+        return
+    
+    print("Installing Starship prompt...")
+    
+    # Install Starship via Homebrew
+    result = run_command(["brew", "list", "starship"], check=False)
+    if result.returncode == 0:
+        print("  -> Starship already installed via Homebrew")
+    else:
+        print("  -> Installing Starship via Homebrew")
+        run_command(["brew", "install", "starship"], show_output=True)
+    
+    # Configure Starship in shell
+    if starship_config.get('configure', True):
+        zshrc_path = Path.home() / '.zshrc'
+        if zshrc_path.exists():
+            zshrc_content = zshrc_path.read_text()
+            starship_init = 'eval "$(starship init zsh)"'
+            
+            if starship_init not in zshrc_content:
+                print("  -> Adding Starship to .zshrc")
+                with open(zshrc_path, 'a') as f:
+                    f.write(f"\n# Starship prompt\n{starship_init}\n")
+        
+        # Create basic Starship config
+        starship_config_dir = Path.home() / '.config'
+        starship_config_dir.mkdir(exist_ok=True)
+        starship_toml = starship_config_dir / 'starship.toml'
+        
+        if not starship_toml.exists():
+            print("  -> Creating Starship configuration")
+            basic_config = """# Starship configuration
+[character]
+success_symbol = "[➜](bold green)"
+error_symbol = "[✗](bold red)"
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+"""
+            starship_toml.write_text(basic_config)
+
 def install_brew_packages(config: Config, progress: EnhancedProgressTracker):
     """Install Homebrew packages from config"""
     packages_config = config.config_data.get('packages', {})
@@ -385,27 +678,28 @@ def install_brew_packages(config: Config, progress: EnhancedProgressTracker):
                 print(f"{'='*50}")
 
             # Check if already installed via Homebrew
-            is_brew_installed, _ = run_command(["brew", "list", "--cask", app], check=False)
+            result = run_command(["brew", "list", "--cask", app], check=False)
+            is_brew_installed = (result.returncode == 0)
             
             timestamp = datetime.now().strftime("%H:%M:%S")
             print(f"  > [{timestamp}] Starting installation of {app}...")
             if is_brew_installed:
                 # Already managed by Homebrew, install normally
                 print(f"  > [{timestamp}] {app} already managed by Homebrew, updating if needed...")
-                success, _ = run_command(["brew", "install", "--cask", app], check=False,
+                result = run_command(["brew", "install", "--cask", app], check=False,
                                         show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
                                         timeout=600)  # 10 minutes for large apps
             else:
                 # Not managed by Homebrew (or not installed), force install to ensure Homebrew management
                 print(f"  > [{timestamp}] {app} not managed by Homebrew, force installing...")
-                success, _ = run_command(["brew", "install", "--cask", "--force", app], check=False,
+                result = run_command(["brew", "install", "--cask", "--force", app], check=False,
                                         show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
                                         timeout=600)  # 10 minutes for large apps
             timestamp = datetime.now().strftime("%H:%M:%S")
             print(f"  > [{timestamp}] Finished processing {app}")
 
             if config.output_mode != OutputMode.MINIMAL:
-                if success:
+                if result.returncode == 0:
                     print(f"[OK] {app} installed successfully")
                 else:
                     print(f"[WARN] {app} may already be installed or failed")
@@ -421,28 +715,34 @@ def install_brew_packages(config: Config, progress: EnhancedProgressTracker):
                 print(f"\n  [{current}/{total_packages}] Installing {tool}...")
 
             # Check if already installed via Homebrew
-            is_brew_installed, _ = run_command(["brew", "list", tool], check=False)
+            result = run_command(["brew", "list", tool], check=False)
+            is_brew_installed = (result.returncode == 0)
             
             timestamp = datetime.now().strftime("%H:%M:%S")
             print(f"  > [{timestamp}] Starting installation of {tool}...")
             if is_brew_installed:
                 # Already managed by Homebrew, install normally
                 print(f"  > [{timestamp}] {tool} already managed by Homebrew, updating if needed...")
-                success, _ = run_command(["brew", "install", tool], check=False,
+                result = run_command(["brew", "install", tool], check=False,
                                         show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
                                         timeout=300)  # 5 minutes for CLI tools
             else:
                 # Not managed by Homebrew (or not installed), force install to ensure Homebrew management
                 print(f"  > [{timestamp}] {tool} not managed by Homebrew, force installing...")
-                success, _ = run_command(["brew", "install", "--force", tool], check=False,
+                result = run_command(["brew", "install", "--force", tool], check=False,
                                         show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
                                         timeout=300)  # 5 minutes for CLI tools
             timestamp = datetime.now().strftime("%H:%M:%S")
             print(f"  > [{timestamp}] Finished processing {tool}")
 
             if config.output_mode != OutputMode.MINIMAL:
-                if success:
+                if result.returncode == 0:
                     print(f"     [OK] {tool} installed")
+                    # Link tools if needed
+                    if tool in ['yarn', 'pnpm']:
+                        link_result = run_command(["brew", "link", "--overwrite", tool], check=False)
+                        if link_result.returncode == 0:
+                            print(f"     [OK] {tool} linked")
                 else:
                     print(f"     [WARN] {tool} may already be installed or failed")
 
@@ -508,15 +808,28 @@ def main():
         steps.append(("Configure macOS", lambda: configure_macos(config)))
 
     if config.config_data.get('packages', {}).get('homebrew', {}).get('install', True):
-        steps.append(("Install/Update Homebrew", lambda: None))  # Placeholder
+        steps.append(("Install/Update Homebrew", lambda: install_homebrew(config)))
 
-    if config.config_data.get('packages', {}):
-        steps.append(("Install Brew Packages", lambda: install_brew_packages(config, progress)))
+    if config.config_data.get('ssh', {}).get('generate_key', True):
+        steps.append(("Generate SSH Key", lambda: generate_ssh_key(config)))
 
     if config.config_data.get('git', {}).get('configure', True):
         steps.append(("Configure Git", lambda: configure_git(config)))
 
-    # Add more steps based on config...
+    if config.config_data.get('development', {}).get('rust', {}).get('install', True):
+        steps.append(("Install Rust", lambda: install_rust(config)))
+
+    if config.config_data.get('development', {}).get('node', {}).get('install', True):
+        steps.append(("Install Node.js", lambda: install_node(config)))
+
+    if config.config_data.get('shell', {}).get('oh_my_zsh', {}).get('install', True):
+        steps.append(("Install Oh My Zsh", lambda: install_oh_my_zsh(config)))
+
+    if config.config_data.get('shell', {}).get('starship', {}).get('install', True):
+        steps.append(("Install Starship", lambda: install_starship(config)))
+
+    if config.config_data.get('packages', {}):
+        steps.append(("Install Brew Packages", lambda: install_brew_packages(config, progress)))
 
     # Send start notification
     if config.notifications_enabled:
