@@ -5,6 +5,25 @@ All notable changes to the macOS Setup project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-09-15
+
+### Added
+- Git configuration functionality (user name, email, aliases, default branch)
+- Timeout handling for all subprocess calls (10min for GUI apps, 5min for CLI tools)
+- Intelligent Homebrew management with force-install for non-Homebrew managed apps
+- Timestamped progress feedback for better user experience
+- Topgrade to CLI tools list
+
+### Changed
+- Removed PyYAML dependency - now JSON-only configuration
+- Documentation updated to require JSON configuration (removed interactive mode)
+- Enhanced visual feedback with clear status messages and progress indicators
+- Improved error handling with timeout exception catching
+
+### Fixed
+- Script hanging on problematic package installations
+- Incorrect script filenames in documentation
+
 ## [1.0.1] - 2025-09-15
 
 ### Added
@@ -55,7 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned Features
-- YAML configuration support (optional)
 - Package group profiles (web dev, data science, etc.)
 - Backup and restore functionality
 - Update checker for installed packages
