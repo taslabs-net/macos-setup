@@ -1,0 +1,135 @@
+{
+  "user": {
+    "name": "Your Name",
+    "email": "your.email@example.com",
+    "author_url": "yourwebsite.com"
+  },
+  "output": {
+    "mode": "normal",
+    "log_level": "INFO",
+    "show_progress": true,
+    "show_time_remaining": true
+  },
+  "notifications": {
+    "enabled": true,
+    "on_complete": true,
+    "on_error": true,
+    "sound": true
+  },
+  "macos": {
+    "configure": true,
+    "settings": {
+      "screenshots_format": "jpg",
+      "show_hidden_files": true,
+      "show_library_folder": true,
+      "finder_path_bar": true,
+      "finder_status_bar": true
+    }
+  },
+  "packages": {
+    "homebrew": {
+      "install": true,
+      "update": true
+    },
+    "gui_apps": {
+      "enabled": true,
+      "apps": [
+        "obsidian",
+        "raycast",
+        "google-chrome",
+        "firefox",
+        "brave-browser",
+        "iterm2",
+        "cursor",
+        "claude-code",
+        "orbstack",
+        "slack",
+        "discord",
+        "figma",
+        "ngrok",
+        "imageoptim"
+      ]
+    },
+    "cli_tools": {
+      "enabled": true,
+      "tools": [
+        "git",
+        "nvm",
+        "yarn",
+        "pnpm",
+        "wget",
+        "cmake",
+        "ffmpeg",
+        "make",
+        "tree",
+        "ripgrep",
+        "fzf",
+        "bat",
+        "exa",
+        "htop",
+        "jq",
+        "tldr"
+      ]
+    }
+  },
+  "development": {
+    "rust": {
+      "install": true,
+      "cargo_tools": ["cargo-edit", "cargo-watch"]
+    },
+    "node": {
+      "install": true,
+      "version": "lts",
+      "npm_packages": ["typescript", "eslint", "prettier"]
+    }
+  },
+  "shell": {
+    "oh_my_zsh": {
+      "install": true,
+      "plugins": [
+        "git",
+        "zsh-completions",
+        "zsh-autosuggestions",
+        "zsh-syntax-highlighting"
+      ]
+    },
+    "starship": {
+      "install": true,
+      "configure": true
+    }
+  },
+  "ssh": {
+    "generate_key": true,
+    "key_type": "ed25519",
+    "key_name": "github",
+    "add_to_keychain": true
+  },
+  "git": {
+    "configure": true,
+    "default_branch": "main",
+    "aliases": {
+      "enabled": true,
+      "custom": {
+        "co": "checkout",
+        "br": "branch",
+        "ci": "commit",
+        "st": "status"
+      }
+    }
+  },
+  "behavior": {
+    "skip_existing": true,
+    "auto_retry_failed": true,
+    "max_retries": 3,
+    "parallel_downloads": false,
+    "cleanup_on_failure": true
+  },
+  "time_estimates": {
+    "gui_app": 30,
+    "cli_tool": 10,
+    "rust_install": 120,
+    "node_install": 60,
+    "oh_my_zsh": 30,
+    "configuration": 5
+  }
+}

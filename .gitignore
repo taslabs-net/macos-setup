@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# Except these specific files
+!setup.py
+!setup_config.example.json
+!CHANGELOG.md
+!README.md
+!.gitignore
