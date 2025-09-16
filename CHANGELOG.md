@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Claude and ChatGPT to GUI apps list
+- Alt-Tab window switcher to GUI apps list
+- Itsycal menu bar calendar to GUI apps list
 - Cloudflare Wrangler CLI tool
 - Rustup components (clippy, rustfmt) installation after Rust setup
 - Node.js linking via `brew link node` for compatibility
@@ -17,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 - Cargo tools installation with fallback on failure
 - Better error handling for cargo install commands
+
+### Documentation
+- Updated CLAUDE.md to reflect all implemented features
+- Removed redundant Usage section from README
 
 ## [1.2.0] - 2025-09-16
 
