@@ -17,20 +17,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 
-# Try to import yaml, install if necessary
-try:
-    import yaml
-except ImportError:
-    print("[INFO] PyYAML not installed. Installing...")
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        import yaml
-        print("[OK] PyYAML installed successfully")
-    except Exception as e:
-        print(f"[WARNING] Could not install PyYAML: {e}")
-        print("[INFO] YAML config files will not be supported. Use JSON instead.")
-        yaml = None
+# Only JSON configuration is supported
 
 # Output Modes
 class OutputMode(Enum):
@@ -208,23 +195,16 @@ class EnhancedProgressTracker:
 
 # Load configuration from file
 def load_config(config_file: Optional[Path]) -> Dict:
-    """Load configuration from YAML or JSON file"""
+    """Load configuration from JSON file"""
     if not config_file or not config_file.exists():
         return {}
 
     content = config_file.read_text()
 
-    if config_file.suffix in ['.yaml', '.yml']:
-        if yaml is None:
-            print(f"[ERROR] YAML support not available. Please use a JSON config file instead.")
-            print(f"[INFO] You can convert your YAML to JSON or install PyYAML manually:")
-            print(f"       pip install pyyaml")
-            sys.exit(1)
-        return yaml.safe_load(content)
-    elif config_file.suffix == '.json':
+    if config_file.suffix == '.json':
         return json.loads(content)
     else:
-        raise ValueError(f"Unsupported config file format: {config_file.suffix}")
+        raise ValueError(f"Only JSON config files are supported. Got: {config_file.suffix}")
 
 # Get user input or use config
 def get_user_input_or_config(config_data: Dict) -> Config:
@@ -286,8 +266,8 @@ def get_user_input_or_config(config_data: Dict) -> Config:
     return config
 
 # Command execution with proper logging
-def run_command(cmd, shell=False, check=True, show_output=False, verbose=False):
-    """Execute a shell command with appropriate logging"""
+def run_command(cmd, shell=False, check=True, show_output=False, verbose=False, timeout=300):
+    """Execute a shell command with appropriate logging and timeout"""
     detail_logger = logging.getLogger('detail')
 
     cmd_str = cmd if isinstance(cmd, str) else ' '.join(cmd)
@@ -295,10 +275,10 @@ def run_command(cmd, shell=False, check=True, show_output=False, verbose=False):
 
     try:
         if show_output or verbose:
-            result = subprocess.run(cmd, shell=shell, check=check)
+            result = subprocess.run(cmd, shell=shell, check=check, timeout=timeout)
             return result.returncode == 0, ""
         else:
-            result = subprocess.run(cmd, shell=shell, check=check, capture_output=True, text=True)
+            result = subprocess.run(cmd, shell=shell, check=check, capture_output=True, text=True, timeout=timeout)
 
             if result.stdout:
                 detail_logger.debug(f"STDOUT:\n{result.stdout}")
@@ -306,6 +286,9 @@ def run_command(cmd, shell=False, check=True, show_output=False, verbose=False):
                 detail_logger.debug(f"STDERR:\n{result.stderr}")
 
             return result.returncode == 0, result.stdout
+    except subprocess.TimeoutExpired as e:
+        detail_logger.error(f"Command timed out after {timeout}s: {cmd_str}")
+        return False, f"Command timed out after {timeout} seconds"
     except subprocess.CalledProcessError as e:
         detail_logger.error(f"Command failed: {str(e)}")
         return False, str(e)
@@ -395,16 +378,36 @@ def install_brew_packages(config: Config, progress: EnhancedProgressTracker):
             if config.output_mode == OutputMode.MINIMAL:
                 print(f"[{current}/{total_packages}] {app}")
             else:
-                print(f"\n  [{current}/{total_packages}] Installing {app}...")
+                print(f"\n{'='*20} [{current}/{total_packages}] {'='*20}")
+                print(f"Installing GUI app: {app}")
+                print(f"{'='*50}")
 
-            success, _ = run_command(["brew", "install", "--cask", app], check=False,
-                                    verbose=(config.output_mode == OutputMode.VERBOSE))
+            # Check if already installed via Homebrew
+            is_brew_installed, _ = run_command(["brew", "list", "--cask", app], check=False)
+            
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"  > [{timestamp}] Starting installation of {app}...")
+            if is_brew_installed:
+                # Already managed by Homebrew, install normally
+                print(f"  > [{timestamp}] {app} already managed by Homebrew, updating if needed...")
+                success, _ = run_command(["brew", "install", "--cask", app], check=False,
+                                        show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
+                                        timeout=600)  # 10 minutes for large apps
+            else:
+                # Not managed by Homebrew (or not installed), force install to ensure Homebrew management
+                print(f"  > [{timestamp}] {app} not managed by Homebrew, force installing...")
+                success, _ = run_command(["brew", "install", "--cask", "--force", app], check=False,
+                                        show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
+                                        timeout=600)  # 10 minutes for large apps
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"  > [{timestamp}] Finished processing {app}")
 
             if config.output_mode != OutputMode.MINIMAL:
                 if success:
-                    print(f"     [OK] {app} installed")
+                    print(f"[OK] {app} installed successfully")
                 else:
-                    print(f"     [WARN] {app} may already be installed or failed")
+                    print(f"[WARN] {app} may already be installed or failed")
+                print(f"Progress: {current}/{total_packages} packages completed")
 
     if cli_tools:
         progress.update_progress(f"Installing {len(cli_tools)} CLI tools...")
@@ -415,8 +418,25 @@ def install_brew_packages(config: Config, progress: EnhancedProgressTracker):
             else:
                 print(f"\n  [{current}/{total_packages}] Installing {tool}...")
 
-            success, _ = run_command(["brew", "install", tool], check=False,
-                                    verbose=(config.output_mode == OutputMode.VERBOSE))
+            # Check if already installed via Homebrew
+            is_brew_installed, _ = run_command(["brew", "list", tool], check=False)
+            
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"  > [{timestamp}] Starting installation of {tool}...")
+            if is_brew_installed:
+                # Already managed by Homebrew, install normally
+                print(f"  > [{timestamp}] {tool} already managed by Homebrew, updating if needed...")
+                success, _ = run_command(["brew", "install", tool], check=False,
+                                        show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
+                                        timeout=300)  # 5 minutes for CLI tools
+            else:
+                # Not managed by Homebrew (or not installed), force install to ensure Homebrew management
+                print(f"  > [{timestamp}] {tool} not managed by Homebrew, force installing...")
+                success, _ = run_command(["brew", "install", "--force", tool], check=False,
+                                        show_output=True, verbose=(config.output_mode == OutputMode.VERBOSE),
+                                        timeout=300)  # 5 minutes for CLI tools
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"  > [{timestamp}] Finished processing {tool}")
 
             if config.output_mode != OutputMode.MINIMAL:
                 if success:
@@ -428,7 +448,7 @@ def main():
     """Main setup function with config file support"""
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Enhanced macOS Development Environment Setup')
-    parser.add_argument('-c', '--config', type=Path, help='Configuration file (YAML or JSON)')
+    parser.add_argument('-c', '--config', type=Path, help='Configuration file (JSON)')
     parser.add_argument('-m', '--mode', choices=['minimal', 'normal', 'verbose'],
                        default='normal', help='Output mode')
     parser.add_argument('--no-notifications', action='store_true',
