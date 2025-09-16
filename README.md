@@ -1,6 +1,6 @@
 # macOS Development Environment Setup
 
-A comprehensive, automated setup script for macOS development environments with JSON configuration support, progress tracking, and native notifications.
+An automated setup script for macOS development environments with JSON configuration support, progress tracking, and native notifications.
 
 ## Features
 
