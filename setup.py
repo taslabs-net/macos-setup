@@ -206,51 +206,21 @@ def load_config(config_file: Optional[Path]) -> Dict:
     else:
         raise ValueError(f"Only JSON config files are supported. Got: {config_file.suffix}")
 
-# Get user input or use config
-def get_user_input_or_config(config_data: Dict) -> Config:
-    """Get user configuration from input or config file"""
+# Load configuration
+def load_user_config(config_data: Dict) -> Config:
+    """Load user configuration from config file"""
     config = Config()
 
-    # Check if user config exists in file
+    # Load user config from file
     if 'user' in config_data:
         user_data = config_data['user']
         config.user_name = user_data.get('name', '')
         config.user_email = user_data.get('email', '')
         config.author_url = user_data.get('author_url', '')
-
-    # If not in config, ask interactively
-    if not config.user_name:
-        print("macOS Development Environment Setup")
-        print("=" * 60)
-        print("Please provide your information:\n")
-
-        while not config.user_name:
-            config.user_name = input("Your Name: ").strip()
-            if not config.user_name:
-                print("   [!] Name cannot be empty.")
-
-        while not config.user_email:
-            config.user_email = input("Your Email: ").strip()
-            if not config.user_email:
-                print("   [!] Email cannot be empty.")
-            elif '@' not in config.user_email:
-                print("   [!] Please enter a valid email address.")
-                config.user_email = ""
-
-        config.author_url = input("Author URL (optional): ").strip()
-
-        # Confirm
-        print("\n" + "=" * 60)
-        print("Configuration Summary:")
-        print(f"   Name: {config.user_name}")
-        print(f"   Email: {config.user_email}")
-        print(f"   URL: {config.author_url or 'Not provided'}")
-        print("=" * 60)
-
-        confirm = input("\nIs this correct? (y/n): ").strip().lower()
-        if confirm != 'y':
-            print("Let's try again...\n")
-            return get_user_input_or_config({})
+    else:
+        print("[ERROR] User configuration not found in config file.")
+        print("Please ensure your config file contains a 'user' section with name and email.")
+        sys.exit(1)
 
     # Set output mode from config
     if 'output' in config_data:
@@ -480,7 +450,8 @@ def main():
     """Main setup function with config file support"""
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Enhanced macOS Development Environment Setup')
-    parser.add_argument('-c', '--config', type=Path, help='Configuration file (JSON)')
+    parser.add_argument('-c', '--config', type=Path, required=True, 
+                       help='Configuration file (JSON) - Required')
     parser.add_argument('-m', '--mode', choices=['minimal', 'normal', 'verbose'],
                        default='normal', help='Output mode')
     parser.add_argument('--no-notifications', action='store_true',
@@ -491,13 +462,18 @@ def main():
     args = parser.parse_args()
 
     # Load configuration
-    config_data = {}
-    if args.config and args.config.exists():
-        print(f"Loading configuration from: {args.config}")
-        config_data = load_config(args.config)
+    if not args.config.exists():
+        print(f"[ERROR] Configuration file not found: {args.config}")
+        print("\nPlease create a configuration file first:")
+        print("  cp setup_config.example.json setup_config.json")
+        print("  Then edit setup_config.json with your information")
+        sys.exit(1)
+    
+    print(f"Loading configuration from: {args.config}")
+    config_data = load_config(args.config)
 
     # Get user configuration
-    config = get_user_input_or_config(config_data)
+    config = load_user_config(config_data)
 
     # Override with command line arguments
     if args.mode:
@@ -561,9 +537,10 @@ def main():
         print("\nSteps to execute:")
         for i, (name, _) in enumerate(steps, 1):
             print(f"  {i}. {name}")
-
+        
         if not args.dry_run:
-            input("\nPress Enter to begin...")
+            print("\nStarting installation...")
+            time.sleep(2)  # Brief pause to let user see what will be installed
 
     # Dry run mode
     if args.dry_run:
