@@ -78,7 +78,8 @@
         "htop",
         "jq",
         "tldr",
-        "cloudflare-wrangler"
+        "cloudflare-wrangler",
+        "gh"
       ]
     }
   },

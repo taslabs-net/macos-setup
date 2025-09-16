@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alt-Tab window switcher to GUI apps list
 - Itsycal menu bar calendar to GUI apps list
 - Cloudflare Wrangler CLI tool
+- GitHub CLI (gh) for repository management
 - Rustup components (clippy, rustfmt) installation after Rust setup
 - Node.js linking via `brew link node` for compatibility
 - Force flag for cargo tools installation to handle partial installs
