@@ -41,19 +41,6 @@ python3 setup.py -c setup_config.json -m minimal
 python3 setup.py -c setup_config.json -m verbose
 ```
 
-## Usage
-
-Use a JSON config file for hands-free installation:
-
-```bash
-# First, copy and customize the example config
-cp setup_config.example.json setup_config.json
-# Edit setup_config.json with your details
-
-# Run with config
-python3 setup.py -c setup_config.json
-```
-
 ## Configuration
 
 Edit `setup_config.json` to customize your setup:
