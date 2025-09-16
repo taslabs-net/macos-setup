@@ -28,10 +28,7 @@ nano setup_config.json
 ### Basic Usage
 
 ```bash
-# Run with default interactive mode
-python3 setup.py
-
-# Run with JSON configuration (recommended)
+# Run with JSON configuration
 python3 setup.py -c setup_config.json
 
 # Dry run to preview changes
@@ -44,19 +41,8 @@ python3 setup.py -c setup_config.json -m minimal
 python3 setup.py -c setup_config.json -m verbose
 ```
 
-## Usage Modes
+## Usage
 
-### Interactive Mode
-Run without a config file and the script will prompt for:
-- Your name (for Git and NPM)
-- Email address (for Git and NPM)
-- Author URL (for NPM)
-
-```bash
-python3 setup.py
-```
-
-### Automated Mode
 Use a JSON config file for hands-free installation:
 
 ```bash
@@ -193,7 +179,7 @@ Adjust in `setup_config.json`:
 ### Disabling Notifications
 
 ```bash
-python3 applescript_enhanced.py -c setup_config.json --no-notifications
+python3 setup.py -c setup_config.json --no-notifications
 ```
 
 Or in config:
@@ -232,7 +218,7 @@ Or in config:
 
 Run with verbose output:
 ```bash
-python3 applescript_enhanced.py -c setup_config.json -m verbose
+python3 setup.py -c setup_config.json -m verbose
 ```
 
 Check logs:
