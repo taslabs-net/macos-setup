@@ -354,6 +354,38 @@ def configure_macos(config: Config):
     if commands:
         run_command("killall Finder", shell=True)
 
+def configure_git(config: Config):
+    """Configure Git based on config"""
+    git_config = config.config_data.get('git', {})
+    
+    if not git_config.get('configure', True):
+        print("Skipping Git configuration (disabled in config)")
+        return
+    
+    print("Configuring Git...")
+    
+    # Set user information
+    if config.user_name:
+        run_command(["git", "config", "--global", "user.name", config.user_name])
+        print(f"  -> Set user.name to '{config.user_name}'")
+    
+    if config.user_email:
+        run_command(["git", "config", "--global", "user.email", config.user_email])
+        print(f"  -> Set user.email to '{config.user_email}'")
+    
+    # Set default branch
+    default_branch = git_config.get('default_branch', 'main')
+    run_command(["git", "config", "--global", "init.defaultBranch", default_branch])
+    print(f"  -> Set default branch to '{default_branch}'")
+    
+    # Configure aliases
+    aliases_config = git_config.get('aliases', {})
+    if aliases_config.get('enabled', True):
+        custom_aliases = aliases_config.get('custom', {})
+        for alias, command in custom_aliases.items():
+            run_command(["git", "config", "--global", f"alias.{alias}", command])
+            print(f"  -> Set alias '{alias}' to '{command}'")
+
 def install_brew_packages(config: Config, progress: EnhancedProgressTracker):
     """Install Homebrew packages from config"""
     packages_config = config.config_data.get('packages', {})
@@ -504,6 +536,9 @@ def main():
 
     if config.config_data.get('packages', {}):
         steps.append(("Install Brew Packages", lambda: install_brew_packages(config, progress)))
+
+    if config.config_data.get('git', {}).get('configure', True):
+        steps.append(("Configure Git", lambda: configure_git(config)))
 
     # Add more steps based on config...
 
