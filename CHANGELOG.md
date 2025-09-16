@@ -16,10 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rustup components (clippy, rustfmt) installation after Rust setup
 - Node.js linking via `brew link node` for compatibility
 - Force flag for cargo tools installation to handle partial installs
+- Automatic PATH configuration for all installed tools (Homebrew, Cargo, NVM, FZF)
 
 ### Improved
 - Cargo tools installation with fallback on failure
 - Better error handling for cargo install commands
+- Shell configuration now automatically adds PATH entries for installed tools
+- FZF shell integration automatically configured when installed
 
 ### Documentation
 - Updated CLAUDE.md to reflect all implemented features

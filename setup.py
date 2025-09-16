@@ -666,6 +666,80 @@ truncate_to_repo = true
 """
             starship_toml.write_text(basic_config)
 
+def configure_shell_paths(config: Config):
+    """Configure shell PATH settings for installed tools"""
+    print("Configuring shell PATH settings...")
+
+    shell_rc = Path.home() / '.zshrc'
+    if not shell_rc.exists():
+        shell_rc = Path.home() / '.bash_profile'
+
+    if not shell_rc.exists():
+        print("  -> No shell configuration file found, skipping PATH setup")
+        return
+
+    # Read existing content
+    shell_content = shell_rc.read_text()
+    additions = []
+
+    # 1. Homebrew shellenv (if not already present)
+    if 'brew shellenv' not in shell_content:
+        if os.uname().machine == 'arm64':
+            brew_prefix = '/opt/homebrew'
+        else:
+            brew_prefix = '/usr/local'
+
+        if Path(f'{brew_prefix}/bin/brew').exists():
+            print("  -> Adding Homebrew to PATH")
+            additions.append(f'\n# Homebrew\neval "$({brew_prefix}/bin/brew shellenv)"')
+
+    # 2. Cargo/Rust PATH (if not already present)
+    cargo_bin = Path.home() / '.cargo' / 'bin'
+    if cargo_bin.exists() and '.cargo/bin' not in shell_content:
+        print("  -> Adding Cargo to PATH")
+        additions.append(f'\n# Rust/Cargo\nexport PATH="$HOME/.cargo/bin:$PATH"')
+
+    # 3. Ensure NVM is properly configured (update if needed)
+    if (Path.home() / '.nvm').exists():
+        if 'NVM_DIR' not in shell_content:
+            print("  -> Adding NVM configuration")
+            if os.uname().machine == 'arm64':
+                nvm_source = '/opt/homebrew/opt/nvm'
+            else:
+                nvm_source = '/usr/local/opt/nvm'
+
+            nvm_config = f'''
+# NVM (Node Version Manager)
+export NVM_DIR="$HOME/.nvm"
+[ -s "{nvm_source}/nvm.sh" ] && . "{nvm_source}/nvm.sh"
+[ -s "{nvm_source}/etc/bash_completion.d/nvm" ] && . "{nvm_source}/etc/bash_completion.d/nvm"'''
+            additions.append(nvm_config)
+
+    # 4. FZF shell integration (if fzf is installed but integration missing)
+    if run_command(['which', 'fzf'], check=False).returncode == 0:
+        fzf_shell = Path.home() / '.fzf.zsh' if 'zsh' in str(shell_rc) else Path.home() / '.fzf.bash'
+        if not fzf_shell.exists() and 'fzf' not in shell_content:
+            print("  -> Setting up FZF shell integration")
+            if os.uname().machine == 'arm64':
+                fzf_install = '/opt/homebrew/opt/fzf/install'
+            else:
+                fzf_install = '/usr/local/opt/fzf/install'
+
+            if Path(fzf_install).exists():
+                # Run fzf install script non-interactively
+                run_command([fzf_install, '--key-bindings', '--completion', '--no-update-rc'], check=False)
+                if fzf_shell.exists():
+                    additions.append(f'\n# FZF\n[ -f {fzf_shell} ] && source {fzf_shell}')
+
+    # Write additions to shell config
+    if additions:
+        print(f"  -> Updating {shell_rc.name}")
+        with open(shell_rc, 'a') as f:
+            f.write('\n' + '\n'.join(additions))
+        print("  -> Shell PATH configuration complete")
+    else:
+        print("  -> All PATH configurations already present")
+
 def install_brew_packages(config: Config, progress: EnhancedProgressTracker):
     """Install Homebrew packages from config"""
     packages_config = config.config_data.get('packages', {})
@@ -847,6 +921,9 @@ def main():
 
     if config.config_data.get('packages', {}):
         steps.append(("Install Brew Packages", lambda: install_brew_packages(config, progress)))
+
+    # Add shell PATH configuration as the last step
+    steps.append(("Configure Shell PATHs", lambda: configure_shell_paths(config)))
 
     # Send start notification
     if config.notifications_enabled:
