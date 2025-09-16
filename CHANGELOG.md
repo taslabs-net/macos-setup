@@ -5,98 +5,44 @@ All notable changes to the macOS Setup project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] - 2024-09-15
+## [1.0.0] - 2025-09-15
 
-### Changed
-- Consolidated to single `setup.py` script that handles both interactive and config modes
-- Removed redundant `applescript.py` as enhanced version covers all functionality
-- Simplified project structure
-
-### Security
-- Removed personal information from repository history
-- Added `.gitignore` for personal config files
-- Provided `setup_config.example.json` template
-
-## [2.0.0] - 2024-09-15
-
-### Added
-- **Enhanced Script** (now `setup.py`)
-  - JSON configuration file support
-  - Time estimation with real-time updates
+### Initial Release
+- **Core Script** (`setup.py`)
+  - Interactive user configuration with fallback prompts
+  - JSON configuration file support via `setup_config.example.json`
   - Multiple output modes (minimal, normal, verbose)
   - macOS native notifications
   - Dry-run mode for previewing changes
   - Command-line argument parsing
-  - Auto-retry for failed installations
 
 - **Configuration System**
-  - `setup_config.json` for complete customization
-  - User information pre-configuration
-  - Package selection control
-  - Time estimate customization
+  - JSON-based configuration for complete customization
+  - User information pre-configuration (name, email, author URL)
+  - Package selection control for GUI apps and CLI tools
   - Notification preferences
-  - Installation behavior settings
+  - macOS system settings configuration
 
-- **Documentation**
-  - Comprehensive README with usage examples
-  - Troubleshooting guide
-  - Configuration documentation
-
-### Changed
-- Moved project to organized structure in `/Users/tim/Coding/macos-setup/`
-- Enhanced logging with separate detail logs
-- Improved error handling and recovery
-
-### Improved
-- Better progress tracking with percentage completion
-- Architecture detection (Apple Silicon vs Intel)
-- Path handling for different macOS configurations
-- Backup system for existing configurations
-
-## [1.5.0] - 2024-09-15
-
-### Added
-- Comprehensive logging system
-  - Main log file with high-level progress
-  - Detail log with command outputs
-  - Automatic log directory creation
-
-### Changed
-- Removed all emojis for cleaner, professional output
-- Replaced emoji indicators with text markers ([OK], [WARN], [ERROR])
-- Improved progress indicators
-
-## [1.0.0] - 2024-09-15
-
-### Initial Release
-- **Core Features** (`applescript.py`)
-  - Interactive user configuration
-  - macOS system preferences configuration
+- **System Configuration**
+  - macOS defaults (screenshots format, hidden files, Finder settings)
   - Homebrew installation and package management
-  - Development environment setup (Rust, Node.js, Python)
-  - Shell configuration (Oh My Zsh, Starship)
-  - SSH key generation and configuration
-  - Git configuration with user details
+  - Development environment setup
+  - Architecture detection (Apple Silicon vs Intel)
+  - SSH key generation and Git configuration
 
 - **Package Installation**
   - GUI applications via Homebrew Cask
   - CLI tools via Homebrew
-  - Rust and cargo tools
-  - Node.js via NVM
-  - Python environment with pyenv
-
-- **System Configuration**
-  - macOS defaults (screenshots, Finder, hidden files)
-  - Zsh configuration with plugins
-  - NPM configuration with user details
-  - SSH key setup for GitHub
+  - Configurable package lists
+  - Idempotent installation (safe to run multiple times)
 
 ### Features
-- Progress tracking with step counter
-- Automatic detection of existing installations
-- Error handling with continuation
-- Comprehensive installation summary
+- Progress tracking with step-by-step output
+- Comprehensive logging system
+- Error handling with continuation on failures
+- Installation summary with success/failure reporting
 - Support for both Apple Silicon and Intel Macs
+- Clean repository structure with essential files only
 
 ## [Unreleased]
 
@@ -105,56 +51,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package group profiles (web dev, data science, etc.)
 - Backup and restore functionality
 - Update checker for installed packages
-- Web dashboard for monitoring
 - Integration with dotfiles repositories
-- Multi-user support
-- Corporate proxy configuration
-- Custom package repositories
 
 ### Under Consideration
 - GUI interface option
-- Cloud backup of configurations
 - Automated testing framework
-- Docker/container setup options
-- Database installation options
+- Custom package repositories
 - IDE plugin installations
-- Custom shell theme configurations
 
-## Migration Guide
+## Usage
 
-### From 1.0.0 to 2.0.0
+```bash
+# Download and setup
+curl -O https://raw.githubusercontent.com/taslabs-net/macos-setup/main/setup.py
+curl -o setup_config.json https://raw.githubusercontent.com/taslabs-net/macos-setup/main/setup_config.example.json
 
-1. Move your setup to the new directory:
-   ```bash
-   cd /Users/tim/Coding/macos-setup/
-   ```
+# Edit configuration
+nano setup_config.json
 
-2. Create your configuration:
-   - Copy `setup_config.json`
-   - Edit with your personal details
-   - Customize package selections
-
-3. Use the enhanced script:
-   ```bash
-   # Instead of:
-   python3 applescript.py
-
-   # Use:
-   python3 applescript_enhanced.py -c setup_config.json
-   ```
-
-4. Benefits of upgrading:
-   - No more interactive prompts (if configured)
-   - Time estimates for installation
-   - Better output control
-   - Native notifications
-   - Dry-run capability
-
-## Version History
-
-- **2.0.0** - Enhanced version with configuration support
-- **1.5.0** - Professional output without emojis
-- **1.0.0** - Initial interactive version
+# Run setup
+python3 setup.py -c setup_config.json
+```
 
 ## Support
 
