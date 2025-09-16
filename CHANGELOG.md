@@ -25,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FZF shell integration automatically configured when installed
 
 ### Documentation
-- Updated CLAUDE.md to reflect all implemented features
 - Removed redundant Usage section from README
 
 ## [1.2.0] - 2025-09-16
