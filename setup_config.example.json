@@ -35,6 +35,7 @@
       "enabled": true,
       "apps": [
         "obsidian",
+        "joplin",
         "raycast",
         "google-chrome",
         "firefox",
